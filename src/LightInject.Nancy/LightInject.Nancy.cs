@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Nancy version 1.0.0.1
+    LightInject.Nancy version 1.0.2
     http://seesharper.github.io/LightInject/
     http://twitter.com/bernhardrichter    
 ******************************************************************************/
