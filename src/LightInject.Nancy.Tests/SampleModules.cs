@@ -21,12 +21,12 @@ namespace LightInject.Nancy.Tests
 
         public SampleModuleWithNancyContextDependency(Func<NancyContext> getNancyContext)
         {
-            Get["/"] = _ =>
+            Get("/", _ =>
             {
                 var context = getNancyContext();
                 Assert.NotNull(context);
                 return string.Empty;
-            };
+            });
 
         }
     }

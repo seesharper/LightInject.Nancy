@@ -5,7 +5,7 @@
     {
         public PingModule()
         {            
-            Get["/ping"] = _ => "pong";
+            Get("/ping", _ => "pong");
         }
     }
 }

@@ -1,0 +1,19 @@
+{
+    "version": "3.0.0.10",
+    "dependencies": {},
+    "frameworks": {
+        "netstandard1.6": {
+            "buildOptions": {
+                "define": [
+                    "NETSTANDARD16"
+                ],
+                "xmlDoc" : true
+            },
+            "dependencies": {
+                "NETStandard.Library": "1.6.0",
+                "LightInject": "5.0.1",
+                "Nancy": "2.0.0-clinteastwood"
+            }
+        }
+    }
+}
