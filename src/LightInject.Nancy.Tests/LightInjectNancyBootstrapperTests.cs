@@ -11,22 +11,15 @@ namespace LightInject.Nancy.Tests
     using global::Nancy;
     using global::Nancy.Bootstrapper;
     using global::Nancy.Testing;
-    using global::Nancy.Configuration;
-    using Xunit.Abstractions;
 
+    
     public class LightInjectNancyBootstrapperTests
     {
-        //ITestOutputHelper _testOutputHelper;
-
-        //public LightInjectNancyBootstrapperTests(ITestOutputHelper testOutputHelper)
-        //{
-        //    _testOutputHelper = testOutputHelper;
-        //}
-
         [Fact]
         public void GetEngine_ReturnsEngine()
         {
-            var bootstrapper = CreateBootstrapper();
+            var bootstrapper = new TestBootstrapper();
+            bootstrapper.Initialise();
             var engine = bootstrapper.GetEngine();
             Assert.NotNull(engine);
         }
@@ -34,7 +27,9 @@ namespace LightInject.Nancy.Tests
         [Fact]
         public void GetModule_ReturnsModule()
         {
-            var bootstrapper = CreateBootstrapper();            
+            var bootstrapper = new TestBootstrapper();            
+            bootstrapper.Initialise();
+            bootstrapper.GetEngine();
             INancyModule module = bootstrapper.GetModule(typeof(SampleModule), new NancyContext());
             Assert.IsType(typeof(SampleModule), module);
         }
@@ -42,7 +37,9 @@ namespace LightInject.Nancy.Tests
         [Fact]
         public void GetModule_TransientDependency_ReturnsModule()
         {
-            var bootstrapper = CreateBootstrapper();
+            var bootstrapper = new TestBootstrapper();
+            bootstrapper.Initialise();
+            bootstrapper.GetEngine();
             var module = (SampleModuleWithTransientDependency)bootstrapper.GetModule(
                 typeof(SampleModuleWithTransientDependency),
                 new NancyContext());
@@ -52,8 +49,9 @@ namespace LightInject.Nancy.Tests
         [Fact]
         public void GetModule_DisposableTransientDependency_ReturnsModule()
         {
-            var bootstrapper = CreateBootstrapper();
-            
+            var bootstrapper = new TestBootstrapper();
+            bootstrapper.Initialise();
+            bootstrapper.GetEngine();
             var module = (SampleModuleWithDisposableTransientDependency)bootstrapper.GetModule(
                 typeof(SampleModuleWithDisposableTransientDependency),
                 new NancyContext());
@@ -64,7 +62,9 @@ namespace LightInject.Nancy.Tests
         [Fact]
         public void GetModule_PerRequestDependency_ReturnsModule()
         {
-            var bootstrapper = CreateBootstrapper();
+            var bootstrapper = new TestBootstrapper();
+            bootstrapper.Initialise();
+            bootstrapper.GetEngine();
             var module = (SampleModuleWithPerRequestDependency)bootstrapper.GetModule(
                 typeof(SampleModuleWithPerRequestDependency),
                 new NancyContext());
@@ -74,7 +74,9 @@ namespace LightInject.Nancy.Tests
         [Fact]
         public void GetAllModules_ReturnsModules()
         {
-            var bootstrapper = CreateBootstrapper();
+            var bootstrapper = new TestBootstrapper();
+            bootstrapper.Initialise();
+            bootstrapper.GetEngine();
             var modules = bootstrapper.GetAllModules(new NancyContext());
             Assert.True(modules.Any());
         }
@@ -82,7 +84,8 @@ namespace LightInject.Nancy.Tests
         [Fact]
         public void GetEngine_RegistersRequestStartup()
         {
-            var bootstrapper = CreateBootstrapper();
+            var bootstrapper = new TestBootstrapper();
+            bootstrapper.Initialise();
             var engine = bootstrapper.GetEngine();
             engine.HandleRequest(new Request("Post", "Sample", "http"));
         }
@@ -138,18 +141,19 @@ namespace LightInject.Nancy.Tests
         [Fact]
         public void Ping_ShouldInvokeRequestStartup()
         {
-            var bootstrapper = CreateBootstrapper();
+            var bootstrapper = new TestBootstrapper();            
 
             var browser = new Browser(bootstrapper);
 
-            var response = browser.Get("/ping").GetAwaiter().GetResult();
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var response = browser.Get("/ping");
+            
+            Assert.True(response.StatusCode == HttpStatusCode.OK);
         }
 
         [Fact]
         public void GetModule_WithNancyContextDependency_ReturnsModuleWithDependency()
         {
-            var bootstrapper = CreateBootstrapper();
+            var bootstrapper = new TestBootstrapper();
 
             var browser = new Browser(bootstrapper);
 
@@ -170,12 +174,6 @@ namespace LightInject.Nancy.Tests
 
     internal class TestBootstrapper : LightInjectNancyBootstrapper
     {
-        //public override void Configure(INancyEnvironment environment)
-        //{
-        //    environment.Tracing(false, true);
-        //    base.Configure(environment);
-        //}
-
         //public T GetInstance<T>()
         //{
         //    return InternalConfiguration.

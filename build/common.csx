@@ -10,14 +10,14 @@ private static int depth = 0;
 
 private static string lastWriteOperation;
 
-public static class DotNet
+public static class DNU
 {
     public static void Build(string pathToProjectFile, string frameworkMoniker)
-    {
-        Command.Execute("dotnet.exe","--version", ".");
-        Command.Execute("dotnet.exe","restore " + pathToProjectFile, ".");        
-        Command.Execute("dotnet.exe","build " + pathToProjectFile + " --framework " + frameworkMoniker + " --configuration Release" , ".");   
-    }
+    {        
+        Command.Execute("cmd.exe","/C dnu.cmd --version " , ".");
+        Command.Execute("cmd.exe","/C dnu.cmd restore " + pathToProjectFile, ".");        
+        Command.Execute("cmd.exe","/C dnu.cmd build " + pathToProjectFile + " --framework " + frameworkMoniker + " --configuration Release" , ".");   
+    }        
 }
 
 public static void RoboCopy(string source, string destination, string arguments = null)
