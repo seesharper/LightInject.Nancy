@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>LightInject.Nancy.Source</id>
-        <version>2.0.0</version>
+        <version>1.1.0</version>
         <authors>Bernhard Richter</authors>
         <owners>Bernhard Richter</owners>
         <licenseUrl>http://opensource.org/licenses/MIT</licenseUrl>
@@ -13,11 +13,11 @@
         <copyright>Bernhard Richter</copyright>
         <tags>Ioc Dependency-Injection Inversion-of-Control LightInject Web Nancy NancyFx</tags>
         <dependencies>
-            <dependency id="LightInject.Source" version="5.0.1" />
+            <dependency id="LightInject.Source" version="4.1.4" />
         </dependencies>        
     </metadata>
     <files>        
-        <file src="content\net452\LightInject.Nancy\LightInject.Nancy.cs.pp" target="content\net452\LightInject.Nancy\LightInject.Nancy.cs.pp" />        
+        <file src="content\net45\LightInject.Nancy\LightInject.Nancy.cs.pp" target="content\net45\LightInject.Nancy\LightInject.Nancy.cs.pp" />        
         <file src="content\net46\LightInject.Nancy\LightInject.Nancy.cs.pp" target="content\net46\LightInject.Nancy\LightInject.Nancy.cs.pp" />        
     </files>
 </package>

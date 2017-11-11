@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Nancy version 2.0.0
+    LightInject.Nancy version 1.1.1
     http://seesharper.github.io/LightInject/
     http://twitter.com/bernhardrichter    
 ******************************************************************************/
@@ -31,58 +31,21 @@
 [module: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1633:FileMustHaveHeader", Justification = "Custom header.")]
 [module: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1600:ElementsMustBeDocumented", Justification = "All public members are documented.")]
 
-#if NETSTANDARD16
-namespace System.Diagnostics.CodeAnalysis
-{
-    public class ExcludeFromCodeCoverageAttribute : Attribute
-    { }
-}
-#endif
-
 namespace LightInject.Nancy
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Reflection;
+    using System.Diagnostics.CodeAnalysis;    
     using global::Nancy;
     using global::Nancy.Bootstrapper;
-    using global::Nancy.Configuration;
     using global::Nancy.Diagnostics;
-
+    
     /// <summary>
     /// A Nancy bootstrapper for LightInject.
     /// </summary>
     public class LightInjectNancyBootstrapper : NancyBootstrapperBase<IServiceContainer>
     {
-        /// <summary>
-        /// Get the <see cref="INancyEnvironment" /> instance.
-        /// </summary>
-        /// <returns>An configured <see cref="INancyEnvironment" /> instance.</returns>
-        /// <remarks>The boostrapper must be initialised (<see cref="INancyBootstrapper.Initialise" />) prior to calling this.</remarks>
-        public override INancyEnvironment GetEnvironment()
-        {
-            return ApplicationContainer.GetInstance<INancyEnvironment>();
-        }
-
-        /// <summary>
-        /// Gets the <see cref="INancyEnvironmentConfigurator"/> used by th.
-        /// </summary>
-        /// <returns>An <see cref="INancyEnvironmentConfigurator"/> instance.</returns>
-        protected override INancyEnvironmentConfigurator GetEnvironmentConfigurator()
-        {
-            return ApplicationContainer.GetInstance<INancyEnvironmentConfigurator>();
-        }
-
-        /// <summary>
-        /// Registers an <see cref="INancyEnvironment"/> instance in the container.
-        /// </summary>
-        /// <param name="container">The container to register into.</param>
-        /// <param name="environment">The <see cref="INancyEnvironment"/> instance to register.</param>
-        protected override void RegisterNancyEnvironment(IServiceContainer container, INancyEnvironment environment)
-        {
-            container.RegisterInstance<INancyEnvironment>(environment);
-        }
+        private IServiceContainer serviceContainer;
 
         /// <summary>
         /// Gets an <see cref="INancyModule"/> instance.
@@ -93,7 +56,7 @@ namespace LightInject.Nancy
         public override INancyModule GetModule(Type moduleType, NancyContext context)
         {
             EnsureScopeIsStarted(context);
-            return ApplicationContainer.GetInstance<INancyModule>(moduleType.FullName);
+            return serviceContainer.GetInstance<INancyModule>(moduleType.FullName);
         }
 
         /// <summary>
@@ -103,17 +66,17 @@ namespace LightInject.Nancy
         /// <returns>All <see cref="INancyModule"/> instances.</returns>
         public override IEnumerable<INancyModule> GetAllModules(NancyContext context)
         {
-            EnsureScopeIsStarted(context);
-            return ApplicationContainer.GetAllInstances<INancyModule>();
+            EnsureScopeIsStarted(context);            
+            return serviceContainer.GetAllInstances<INancyModule>();
         }
 
         /// <summary>
         /// Gets the diagnostics for initialization.
         /// </summary>
-        /// <returns>An <see cref="IDiagnostics"/> instance.</returns>
+        /// <returns>An <see cref="IDiagnostics"/> instance.</returns>      
         protected override IDiagnostics GetDiagnostics()
         {
-            return ApplicationContainer.GetInstance<IDiagnostics>();
+            return serviceContainer.GetInstance<IDiagnostics>();
         }
 
         /// <summary>
@@ -122,7 +85,7 @@ namespace LightInject.Nancy
         /// <returns><see cref="INancyEngine"/></returns>
         protected override INancyEngine GetEngineInternal()
         {
-            return ApplicationContainer.GetInstance<INancyEngine>();
+            return serviceContainer.GetInstance<INancyEngine>();
         }
 
         /// <summary>
@@ -131,29 +94,30 @@ namespace LightInject.Nancy
         /// <returns><see cref="IServiceContainer"/>.</returns>
         protected override IServiceContainer GetApplicationContainer()
         {
-            return new ServiceContainer();
+            serviceContainer = GetServiceContainer();
+            foreach (var requestStartupType in RequestStartupTasks)
+            {
+                serviceContainer.Register(typeof(IRequestStartup), requestStartupType, requestStartupType.FullName);
+            }
+
+            return serviceContainer;
         }
 
         /// <summary>
         /// Registers the <see cref="INancyModuleCatalog"/> into the underlying <see cref="IServiceContainer"/> instance.
         /// </summary>
-        /// <param name="applicationContainer">The <see cref="IServiceContainer"/> to register into.</param>
-        protected override void RegisterBootstrapperTypes(IServiceContainer applicationContainer)
+        /// <param name="container">The <see cref="IServiceContainer"/> to register into.</param>
+        protected override void RegisterBootstrapperTypes(IServiceContainer container)
         {
-            applicationContainer.ScopeManagerProvider = new PerLogicalCallContextScopeManagerProvider();
-            applicationContainer.Register<Func<NancyContext>>(factory => () => NancyContextRequestStartup.Current, new PerContainerLifetime());
-            applicationContainer.RegisterInstance<INancyModuleCatalog>(this);
-            foreach (var requestStartupType in RequestStartupTasks)
-            {
-                applicationContainer.Register(typeof(IRequestStartup), requestStartupType, requestStartupType.FullName, new PerScopeLifetime());
-            }
+            container.RegisterInstance<INancyModuleCatalog>(this);
         }
 
         /// <summary>
         /// Registers the <paramref name="typeRegistrations"/> into the underlying <see cref="IServiceContainer"/>.
         /// </summary>
         /// <param name="container">The <see cref="IServiceContainer"/> to register into.</param>
-        /// <param name="typeRegistrations">Each <see cref="TypeRegistration"/> represents a service to be registered.</param>
+        /// <param name="typeRegistrations">Each <see cref="TypeRegistration"/> represents a service 
+        /// to be registered.</param>
         protected override void RegisterTypes(IServiceContainer container, IEnumerable<TypeRegistration> typeRegistrations)
         {
             foreach (var typeRegistration in typeRegistrations)
@@ -161,13 +125,13 @@ namespace LightInject.Nancy
                 switch (typeRegistration.Lifetime)
                 {
                     case Lifetime.Transient:
-                        RegisterTransient(container, typeRegistration.RegistrationType, typeRegistration.ImplementationType);
+                        RegisterTransient(typeRegistration.RegistrationType, typeRegistration.ImplementationType, string.Empty);
                         break;
                     case Lifetime.Singleton:
-                        RegisterSingleton(container, typeRegistration.RegistrationType, typeRegistration.ImplementationType);
+                        RegisterSingleton(typeRegistration.RegistrationType, typeRegistration.ImplementationType, string.Empty);
                         break;
                     case Lifetime.PerRequest:
-                        RegisterPerRequest(container, typeRegistration.RegistrationType, typeRegistration.ImplementationType);
+                        RegisterPerRequest(typeRegistration.RegistrationType, typeRegistration.ImplementationType, string.Empty);
                         break;
                 }
             }
@@ -176,10 +140,12 @@ namespace LightInject.Nancy
         /// <summary>
         /// Gets all registered application startup tasks
         /// </summary>
-        /// <returns>An <see cref="IEnumerable{T}"/> instance containing <see cref="IApplicationStartup"/> instances.</returns>
+        /// <returns>
+        /// An <see cref="IEnumerable{T}"/> instance containing <see cref="IApplicationStartup"/> instances.
+        /// </returns>
         protected override IEnumerable<IApplicationStartup> GetApplicationStartupTasks()
         {
-            return ApplicationContainer.GetAllInstances<IApplicationStartup>();
+            return serviceContainer.GetAllInstances<IApplicationStartup>();
         }
 
         /// <summary>
@@ -200,14 +166,15 @@ namespace LightInject.Nancy
         /// <returns>An <see cref="IEnumerable{T}"/> instance containing <see cref="IRegistrations"/> instances.</returns>
         protected override IEnumerable<IRegistrations> GetRegistrationTasks()
         {
-            return ApplicationContainer.GetAllInstances<IRegistrations>();
+            return serviceContainer.GetAllInstances<IRegistrations>();
         }
 
         /// <summary>
         /// Registers multiple implementations of a given interface.
         /// </summary>
         /// <param name="container">The <see cref="IServiceContainer"/> to register into.</param>
-        /// <param name="collectionTypeRegistrations">A list of <see cref="CollectionTypeRegistration"/> instances where each instance represents an abstraction and its implementations.</param>
+        /// <param name="collectionTypeRegistrations">A list of <see cref="CollectionTypeRegistration"/> instances
+        /// where each instance represents an abstraction and its implementations.</param>
         protected override void RegisterCollectionTypes(IServiceContainer container, IEnumerable<CollectionTypeRegistration> collectionTypeRegistrations)
         {
             foreach (var collectionTypeRegistration in collectionTypeRegistrations)
@@ -217,13 +184,13 @@ namespace LightInject.Nancy
                     switch (collectionTypeRegistration.Lifetime)
                     {
                         case Lifetime.Transient:
-                            RegisterTransient(container, collectionTypeRegistration.RegistrationType, implementingType, implementingType.FullName);
+                            RegisterTransient(collectionTypeRegistration.RegistrationType, implementingType, implementingType.FullName);
                             break;
                         case Lifetime.Singleton:
-                            RegisterSingleton(container, collectionTypeRegistration.RegistrationType, implementingType, implementingType.FullName);
+                            RegisterSingleton(collectionTypeRegistration.RegistrationType, implementingType, implementingType.FullName);
                             break;
                         case Lifetime.PerRequest:
-                            RegisterPerRequest(container, collectionTypeRegistration.RegistrationType, implementingType, implementingType.FullName);
+                            RegisterPerRequest(collectionTypeRegistration.RegistrationType, implementingType, implementingType.FullName);
                             break;
                     }
                 }
@@ -240,7 +207,11 @@ namespace LightInject.Nancy
         {
             foreach (var moduleRegistrationType in moduleRegistrationTypes)
             {
-                container.Register(typeof(INancyModule), moduleRegistrationType.ModuleType, moduleRegistrationType.ModuleType.FullName, new PerScopeLifetime());
+                container.Register(
+                    typeof(INancyModule),
+                    moduleRegistrationType.ModuleType,
+                    moduleRegistrationType.ModuleType.FullName,
+                    new PerScopeLifetime());
             }
         }
 
@@ -253,7 +224,9 @@ namespace LightInject.Nancy
         {
             foreach (var instanceRegistration in instanceRegistrations)
             {
-                container.RegisterInstance(instanceRegistration.RegistrationType, instanceRegistration.Implementation);
+                container.RegisterInstance(
+                    instanceRegistration.RegistrationType,
+                    instanceRegistration.Implementation);
             }
         }
 
@@ -268,15 +241,25 @@ namespace LightInject.Nancy
             var pipelines = new Pipelines(ApplicationPipelines);
             EnsureScopeIsStarted(context);
 
-            var requestStartupTasks = ApplicationContainer.GetAllInstances<IRequestStartup>();
+            var requestStartupTasks = serviceContainer.GetAllInstances<IRequestStartup>();
             foreach (var requestStartupTask in requestStartupTasks)
             {
                 requestStartupTask.Initialize(pipelines, context);
             }
 
-            RequestStartup(ApplicationContainer, pipelines, context);
-
             return pipelines;
+        }
+
+        /// <summary>
+        /// Returns the <see cref="IServiceContainer"/> instance.
+        /// </summary>
+        /// <returns><see cref="IServiceContainer"/>.</returns>
+        protected virtual IServiceContainer GetServiceContainer()
+        {
+            var container = new ServiceContainer();
+            container.ScopeManagerProvider = new PerLogicalCallContextScopeManagerProvider();
+            container.Register<Func<NancyContext>>(factory => () => NancyContextRequestStartup.Current, new PerContainerLifetime());           
+            return container;
         }
 
         private void EnsureScopeIsStarted(NancyContext context)
@@ -287,31 +270,31 @@ namespace LightInject.Nancy
 
             if (scope == null)
             {
-                scope = ApplicationContainer.BeginScope();
+                scope = serviceContainer.BeginScope();
                 context.Items["LightInjectScope"] = scope;
             }
         }
 
-        private void RegisterTransient(IServiceContainer container, Type serviceType, Type implementingType, string serviceName = "")
+        private void RegisterTransient(Type serviceType, Type implementingType, string serviceName)
         {
             if (typeof(IDisposable).IsAssignableFrom(implementingType))
             {
-                container.Register(serviceType, implementingType, serviceName, new PerRequestLifeTime());
+                serviceContainer.Register(serviceType, implementingType, serviceName, new PerRequestLifeTime());
             }
             else
             {
-                container.Register(serviceType, implementingType, serviceName);
+                serviceContainer.Register(serviceType, implementingType, serviceName);
             }
         }
 
-        private void RegisterPerRequest(IServiceContainer container, Type serviceType, Type implementingType, string serviceName = "")
+        private void RegisterPerRequest(Type serviceType, Type implementingType, string serviceName)
         {
-            container.Register(serviceType, implementingType, serviceName, new PerScopeLifetime());
+            serviceContainer.Register(serviceType, implementingType, serviceName, new PerScopeLifetime());
         }
 
-        private void RegisterSingleton(IServiceContainer container, Type serviceType, Type implementingType, string serviceName = "")
+        private void RegisterSingleton(Type serviceType, Type implementingType, string serviceName)
         {
-            container.Register(serviceType, implementingType, serviceName, new PerContainerLifetime());
+            serviceContainer.Register(serviceType, implementingType, serviceName, new PerContainerLifetime());
         }
     }
 
@@ -320,9 +303,9 @@ namespace LightInject.Nancy
     /// so that it can be injected into any class.
     /// </summary>
     public class NancyContextRequestStartup : IRequestStartup
-    {
+    {       
         private static readonly LogicalThreadStorage<NancyContextStorage> ContextStorage =
-            new LogicalThreadStorage<NancyContextStorage>();
+            new LogicalThreadStorage<NancyContextStorage>(() => new NancyContextStorage());
 
         /// <summary>
         /// Perform any initialisation tasks
@@ -332,12 +315,12 @@ namespace LightInject.Nancy
         {
             pipelines.BeforeRequest.AddItemToStartOfPipeline(nancyContext =>
             {
-                ContextStorage.Value = new NancyContextStorage { Context = nancyContext };
+                ContextStorage.Value.Context = nancyContext;
                 return context.Response;
             });
 
-            pipelines.AfterRequest.AddItemToEndOfPipeline(nancyContext =>
-                ContextStorage.Value = null);
+            pipelines.AfterRequest.AddItemToEndOfPipeline(nancyContext => 
+                ContextStorage.Value.Context = null);
         }
 
         /// <summary>
@@ -347,7 +330,12 @@ namespace LightInject.Nancy
 
         private class NancyContextStorage
         {
-            public NancyContext Context { get; set; }
+            public NancyContext Context { get; set; }            
         }
     }
+
+
+
+
+    
 }
