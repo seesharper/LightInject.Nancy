@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Nancy version 1.1.1
+    LightInject.Nancy version 1.1.2
     http://seesharper.github.io/LightInject/
     http://twitter.com/bernhardrichter    
 ******************************************************************************/
@@ -305,7 +305,7 @@ namespace LightInject.Nancy
     public class NancyContextRequestStartup : IRequestStartup
     {       
         private static readonly LogicalThreadStorage<NancyContextStorage> ContextStorage =
-            new LogicalThreadStorage<NancyContextStorage>(() => new NancyContextStorage());
+            new LogicalThreadStorage<NancyContextStorage>();
 
         /// <summary>
         /// Perform any initialisation tasks
@@ -313,13 +313,14 @@ namespace LightInject.Nancy
         /// <param name="pipelines">Application pipelines</param><param name="context">The current context</param>
         public void Initialize(IPipelines pipelines, NancyContext context)
         {
+            ContextStorage.Value = new NancyContextStorage();
             pipelines.BeforeRequest.AddItemToStartOfPipeline(nancyContext =>
             {
                 ContextStorage.Value.Context = nancyContext;
                 return context.Response;
             });
 
-            pipelines.AfterRequest.AddItemToEndOfPipeline(nancyContext => 
+            pipelines.AfterRequest.AddItemToEndOfPipeline(nancyContext =>
                 ContextStorage.Value.Context = null);
         }
 
