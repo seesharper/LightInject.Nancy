@@ -1,13 +1,29 @@
 version: 1.0.{build}
-install:
-- cmd: cinst scriptcs
+image: Visual Studio 2017
+        
+
 build_script:
-- cmd: >-
+- ps: >-
+   
+    (new-object Net.WebClient).DownloadString("https://raw.githubusercontent.com/filipw/dotnet-script/master/install/install.ps1") | iex 
+
+- cmd: >-    
+    
     cd build
 
-    scriptcs build.csx -debug
+    refreshenv
+
+    dotnet script build.csx pack
+
 test: off
 artifacts:
-- path: build/tmp/*.nupkg
+- path: /**/LightInject.Nancy*.nupkg
   name: NuGet Packages
-deploy: off
+deploy:
+  provider: NuGet  
+  api_key:
+    secure: ynFcRQX0oim3DdR5Y8s4BtynS/NYRG059GvWGckqhpZGNZVvhvvn5UUWgsyPKLKm
+  skip_symbols: false  
+  artifact: /.*\.nupkg/
+  on:
+    appveyor_repo_tag: true

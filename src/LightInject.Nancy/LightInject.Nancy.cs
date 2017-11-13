@@ -303,7 +303,7 @@ namespace LightInject.Nancy
     /// so that it can be injected into any class.
     /// </summary>
     public class NancyContextRequestStartup : IRequestStartup
-    {       
+    {        
         private static readonly LogicalThreadStorage<NancyContextStorage> ContextStorage =
             new LogicalThreadStorage<NancyContextStorage>();
 
